@@ -10,7 +10,7 @@ namespace ExampleBot
 	public sealed class Program
 	{
 		// It is recommended to run async outside of Main
-		private static void Main(string[] args) =>
+		internal static void Main(string[] args) =>
 			new Program().Run(args).GetAwaiter().GetResult();
 
 		// With these variables, we can cancel tasks

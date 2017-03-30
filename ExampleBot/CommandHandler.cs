@@ -4,27 +4,36 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Discord;
 using Discord.WebSocket;
 
 namespace ExampleBot
 {
-    internal class CommandHandler
-    {
-		private CommandService commands;
-		private DiscordSocketClient client;
-		private IDependencyMap map;
+	public class CommandHandler
+	{
+		public static char CharPrefix = '.';
+		public CommandService Service;
+		private DiscordSocketClient _client;
+		private IDependencyMap _map;
 
-		public async Task Install(IDependencyMap _map)
+		public async Task Install(IDependencyMap map)
 		{
 			// Create Command Service, inject it into Dependency Map
-			client = _map.Get<DiscordSocketClient>();
-			commands = new CommandService();
-			_map.Add(commands);
-			map = _map;
+			_client = map.Get<DiscordSocketClient>();
+			_map = map;
+			// Creating a CommandServiceConfig is far from required here, just added it for completion's sake
+			Service =
+				new CommandService(new CommandServiceConfig
+				{
+					CaseSensitiveCommands = false,
+					DefaultRunMode = RunMode.Async,
+					LogLevel = LogSeverity.Verbose
+				});
 
-			await commands.AddModulesAsync(Assembly.GetEntryAssembly());
+			// Finds modules in our assembly and adds them to our command service
+			await Service.AddModulesAsync(Assembly.GetEntryAssembly());
 
-			client.MessageReceived += HandleCommand;
+			_client.MessageReceived += HandleCommand;
 		}
 
 		public async Task HandleCommand(SocketMessage parameterMessage)
@@ -38,14 +47,14 @@ namespace ExampleBot
 			if (message == null
 				|| message.IsWebhook
 				|| message.Author.IsBot
-				|| !message.HasMentionPrefix(client.CurrentUser, ref argPos) 
-				|| !message.HasCharPrefix('!', ref argPos))
+				|| !(message.HasMentionPrefix(_client.CurrentUser, ref argPos)
+				|| message.HasCharPrefix(CharPrefix, ref argPos)))
 				return;
 
-			// Create a Command Context
-			var context = new CommandContext(client, message);
+			// Create a Socket Command Context
+			var context = new SocketCommandContext(_client, message);
 			// Execute the Command, store the result
-			var result = await commands.ExecuteAsync(context, argPos, map);
+			var result = await Service.ExecuteAsync(context, argPos, _map, MultiMatchHandling.Exception);
 
 			// If the command failed, notify the user
 			if (!result.IsSuccess)
