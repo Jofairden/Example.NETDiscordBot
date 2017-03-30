@@ -3,18 +3,20 @@ using Discord.WebSocket;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Discord.Commands;
 
 namespace ExampleBot
 {
 	public sealed class Program
 	{
 		// It is recommended to run async outside of Main
-		static void Main(string[] args) =>
+		private static void Main(string[] args) =>
 			new Program().Run(args).GetAwaiter().GetResult();
 
 		// With these variables, we can cancel tasks
 		internal static CancellationTokenSource CTS;
 		internal static CancellationToken CT;
+		internal static CommandHandler handler;
 
 		// This holds our bot client
 		// If we distribute our bot, we might need to use a DiscordShardedClient
@@ -55,8 +57,15 @@ namespace ExampleBot
 			await _client.LoginAsync(TokenType.Bot, ConfigManager.properties.Token);
 			await _client.StartAsync();
 
+			var map = new DependencyMap();
+			map.Add(_client);
+
+			handler = new CommandHandler();
+			await handler.Install(map);
+
 			Console.Title = "Example Bot - " + ConfigManager.properties.Version;
 
+			// Block program until it's closed or task is canceled
 			await Task.Delay(-1, CT);
 		}
 
